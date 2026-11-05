@@ -1,0 +1,67 @@
+# =====================================================================
+# .gitignore  —  tells Git which files must NEVER be uploaded to GitHub
+# =====================================================================
+# Git reads this file automatically. Any file or folder that matches a
+# line below is ignored: it stays on your computer but is not committed.
+#
+# TODO: If you add new tools later that create their own temporary
+#       files, add their patterns at the bottom of this file.
+
+
+# ---------------------------------------------------------------------
+# 1. SECRETS  (the most important section!)
+# ---------------------------------------------------------------------
+# .env holds your real API key. If it reached GitHub, anyone could use
+# your key and spend your credits. Only .env.example (which contains
+# fake placeholder values) is allowed to be committed.
+.env
+.env.local
+.env.*.local
+!.env.example
+
+
+# ---------------------------------------------------------------------
+# 2. PYTHON  (backend)
+# ---------------------------------------------------------------------
+# The virtual environment folder contains thousands of installed library
+# files. Anyone can recreate it with: pip install -r requirements.txt
+venv/
+.venv/
+env/
+
+# Python creates these cache files automatically when code runs.
+__pycache__/
+*.pyc
+
+
+# ---------------------------------------------------------------------
+# 3. USER IMAGES  (privacy!)
+# ---------------------------------------------------------------------
+# Customer photos and generated try-on results are personal data.
+# They must never be published. We ignore everything inside these
+# folders EXCEPT the small ".gitkeep" file, which only exists so that
+# Git remembers the empty folder.
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/outputs/*
+!backend/outputs/.gitkeep
+
+
+# ---------------------------------------------------------------------
+# 4. NODE / REACT  (frontend)
+# ---------------------------------------------------------------------
+# node_modules is huge; anyone can recreate it with: npm install
+node_modules/
+# "dist" is the production build created by "npm run build".
+dist/
+
+
+# ---------------------------------------------------------------------
+# 5. EDITOR AND OPERATING SYSTEM FILES
+# ---------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.log

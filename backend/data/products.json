@@ -1,0 +1,34 @@
+[
+  {
+    "id": "black-tshirt",
+    "name": "Black T-Shirt",
+    "category": "T-Shirts",
+    "price": 19.99,
+    "description": "Classic black crew-neck t-shirt made of soft cotton.",
+    "image": "black-tshirt.jpg"
+  },
+  {
+    "id": "white-tshirt",
+    "name": "White T-Shirt",
+    "category": "T-Shirts",
+    "price": 19.99,
+    "description": "Plain white crew-neck t-shirt, regular fit.",
+    "image": "white-tshirt.jpg"
+  },
+  {
+    "id": "blue-shirt",
+    "name": "Blue Shirt",
+    "category": "Shirts",
+    "price": 34.99,
+    "description": "Light blue long-sleeve button-up shirt.",
+    "image": "blue-shirt.jpg"
+  },
+  {
+    "id": "grey-hoodie",
+    "name": "Grey Hoodie",
+    "category": "Hoodies",
+    "price": 44.99,
+    "description": "Comfortable grey pullover hoodie with front pocket.",
+    "image": "grey-hoodie.jpg"
+  }
+]

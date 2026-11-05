@@ -1,0 +1,37 @@
+/* =====================================================================
+   index.css  —  global styles + the website's colour theme
+   =====================================================================
+   This line loads Tailwind CSS. After that, any component can use
+   Tailwind class names such as "bg-brand text-white rounded-lg".
+*/
+@import "tailwindcss";
+
+/*
+  @theme defines our own design tokens (named colours and fonts).
+  Each "--color-xxx" becomes usable as a class: bg-xxx, text-xxx, border-xxx.
+
+  TODO: Customize the website colours here. Change a value once and the
+        whole site updates. Tip: pick colours at https://tailwindcss.com/docs/colors
+*/
+@theme {
+  /* Main accent colour: buttons, links, highlights */
+  --color-brand: #8a5a44;
+  --color-brand-dark: #6f4636;
+  --color-brand-light: #f4ebe5;
+
+  /* Neutral colours: text and backgrounds */
+  --color-ink: #1c1917;          /* main text */
+  --color-muted: #78716c;        /* secondary text */
+  --color-canvas: #faf8f6;       /* page background */
+
+  /* Fonts (loaded in index.html) */
+  --font-display: "Playfair Display", Georgia, serif;   /* headings */
+  --font-sans: "Inter", system-ui, sans-serif;          /* normal text */
+}
+
+/* Default look of the whole page */
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}

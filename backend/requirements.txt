@@ -1,0 +1,28 @@
+# =====================================================================
+# requirements.txt  —  the Python libraries the backend needs
+# =====================================================================
+# Install all of them at once with:
+#     pip install -r requirements.txt
+#
+# fastapi           -> the web framework: lets us create API endpoints
+#                      like GET /products and POST /tryon with very
+#                      little code.
+# uvicorn           -> the web server that actually runs the FastAPI app
+#                      and listens on http://127.0.0.1:8000
+# python-multipart  -> lets FastAPI read uploaded files (the user's photo)
+#                      sent as "multipart/form-data".
+# httpx             -> makes HTTP requests from Python. We use it to call
+#                      the Genlook virtual try-on API.
+# python-dotenv     -> reads the secret values (API key) from the .env file.
+# cloudinary        -> official Cloudinary library: uploads garment images
+#                      to the cloud and gives back a public https link.
+#
+# TODO: If you add a new library later, add it here so that other
+#       people (and your future self) can install it too.
+
+fastapi==0.121.0
+uvicorn[standard]==0.38.0
+python-multipart==0.0.20
+httpx==0.28.1
+python-dotenv==1.2.1
+cloudinary==1.46.3
