@@ -45,7 +45,7 @@ export async function getProducts() {
     response = await fetch(`${API_URL}/products`)
   } catch {
     // fetch() itself fails when the backend is not running at all.
-    throw new Error('Cannot reach the server. Is the backend running?')
+    throw new Error(`Cannot reach the backend at ${API_URL}. It may be starting up (wait 1 minute and refresh), or the address is wrong.`)
   }
 
   if (!response.ok) {
@@ -64,7 +64,7 @@ async function sendRequest(url, options) {
   try {
     response = await fetch(url, options)
   } catch {
-    throw new Error('Cannot reach the server. Is the backend running?')
+    throw new Error(`Cannot reach the backend at ${API_URL}. It may be starting up (wait 1 minute and refresh), or the address is wrong.`)
   }
 
   if (!response.ok) {
@@ -177,7 +177,7 @@ export async function createTryOn(photoFile, productId) {
     if (error.name === 'AbortError') {
       throw new Error('The try-on took too long. Please try again.')
     }
-    throw new Error('Cannot reach the server. Is the backend running?')
+    throw new Error(`Cannot reach the backend at ${API_URL}. It may be starting up (wait 1 minute and refresh), or the address is wrong.`)
   } finally {
     clearTimeout(timeoutId)
   }
