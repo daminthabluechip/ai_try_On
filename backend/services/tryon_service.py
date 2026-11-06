@@ -61,7 +61,7 @@ FRIENDLY_ERROR_MESSAGES = {
     "INSUFFICIENT_CREDITS": "The AI service has no credits left. Top up your Genlook account or turn on mock mode.",
     "QUOTA_EXCEEDED": "The AI service quota is reached. Please try again later.",
     "RATE_LIMITED": "Too many requests to the AI service. Please wait a moment and try again.",
-    "INVALID_IMAGE": "The AI service could not read this image. Please try a different photo.",
+    "INVALID_IMAGE": "The AI service could not use one of the images (your photo or the garment image).",
     "UNSUPPORTED_IMAGE_TYPE": "This image format is not supported. Please use JPEG, PNG or WebP.",
     "FILE_TOO_LARGE": "The image is too large for the AI service (max 10 MB).",
     "CONTENT_POLICY_VIOLATION": "This product cannot be used for try-on.",
@@ -224,7 +224,11 @@ def wait_for_result(client, generation_id):
 
         if status == "FAILED":
             error_code = generation.get("errorCode", "GENERATION_FAILED")
-            raise TryOnError(get_friendly_message(error_code), status_code=502)
+            message = get_friendly_message(error_code)
+            if generation.get("errorMessage"):
+                message = f"{message} (Details: {generation['errorMessage']})"
+            print(f"[tryon_service] Generation failed: {error_code} {generation.get('errorMessage', '')}")
+            raise TryOnError(message, status_code=502)
 
         # Still PENDING or PROCESSING. Have we waited too long?
         seconds_waited = time.time() - started_at
@@ -296,22 +300,30 @@ def send_request(client, method, path, **request_options):
         return response
 
     # Genlook errors look like: {"code": "...", "message": "...", "status": 400}
-    error_code = read_error_code(response)
+    error_code, provider_message = read_error_details(response)
 
     # Print the details in the backend terminal to help you debug.
     # (We never print the API key.)
     print(f"[tryon_service] Provider error {response.status_code} {error_code}: {response.text[:300]}")
 
-    raise TryOnError(get_friendly_message(error_code), status_code=502)
+    # Show our friendly sentence PLUS the provider's own reason, because the
+    # reason is often the most useful part (e.g. "Image resolution is too low").
+    message = get_friendly_message(error_code)
+    if provider_message:
+        message = f"{message} (Details: {provider_message})"
+    raise TryOnError(message, status_code=502)
 
 
-def read_error_code(response):
-    """Return the provider's error code, or "UNKNOWN" if the body isn't JSON."""
+def read_error_details(response):
+    """
+    Return (error_code, provider_message) from a provider error response.
+    If the body isn't JSON, returns ("UNKNOWN", "").
+    """
     try:
         error_body = response.json()
     except ValueError:
-        return "UNKNOWN"
-    return error_body.get("code", "UNKNOWN")
+        return "UNKNOWN", ""
+    return error_body.get("code", "UNKNOWN"), error_body.get("message", "")
 
 
 def get_friendly_message(error_code):

@@ -61,8 +61,20 @@ TRYON_MOCK_MODE = mock_mode_text.strip().lower() == "true"
 # Format: cloudinary://<api_key>:<api_secret>@<cloud_name>
 # The Cloudinary library reads CLOUDINARY_URL by itself; we only read it
 # here to check whether it has been filled in.
-CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "").strip()
 CLOUDINARY_FOLDER = os.getenv("CLOUDINARY_FOLDER", "ai-tryon/products")
+
+# A wrongly formatted value would make the Cloudinary library crash the
+# whole backend at startup. Instead, we print a warning and ignore it
+# (garment images are then saved locally until you fix .env).
+if CLOUDINARY_URL != "" and not CLOUDINARY_URL.startswith("cloudinary://"):
+    print(
+        "[config] WARNING: CLOUDINARY_URL in backend/.env must start with "
+        "'cloudinary://' (check you didn't paste 'CLOUDINARY_URL=' twice). "
+        "Using local image storage for now."
+    )
+    CLOUDINARY_URL = ""
+    os.environ.pop("CLOUDINARY_URL", None)
 
 
 def is_cloudinary_configured():
