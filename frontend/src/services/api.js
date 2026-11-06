@@ -11,7 +11,8 @@
 // Address of the FastAPI backend.
 // It can be set in frontend/.env as VITE_API_URL (needed when you deploy).
 // If it isn't set, we use the local development address.
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+// .replace(/\/+$/, '') removes a trailing "/" so we never build "...com//products".
+const API_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '')
 
 // The AI usually needs ~10-20 seconds. We give up after 3 minutes.
 const TRYON_TIMEOUT_MS = 180000

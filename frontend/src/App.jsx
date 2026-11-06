@@ -1,8 +1,8 @@
 // =====================================================================
 // App.jsx  —  the frame of the website.
 // =====================================================================
-// Every page shows the same Navbar at the top and Footer at the bottom.
-// In between, <Routes> picks which page to show based on the address:
+// Every page shows the same Navbar at the top.
+// Below it, <Routes> picks which page to show based on the address:
 //
 //   http://localhost:5173/          -> HomePage
 //   http://localhost:5173/catalog   -> CatalogPage
@@ -14,7 +14,6 @@
 import { Routes, Route } from 'react-router-dom'
 
 import Navbar from './components/Navbar.jsx'
-import Footer from './components/Footer.jsx'
 import HomePage from './pages/HomePage.jsx'
 import CatalogPage from './pages/CatalogPage.jsx'
 import TryOnPage from './pages/TryOnPage.jsx'
@@ -39,7 +38,6 @@ function App() {
         </Routes>
       </main>
 
-      <Footer />
     </div>
   )
 }

@@ -13,10 +13,15 @@ const MENU_ITEMS = [
   { label: 'Home', path: '/' },
   { label: 'Catalog', path: '/catalog' },
   { label: 'Try-On', path: '/try-on' },
-  // TODO (before going online): remove this item, and set
-  //   ALLOW_PRODUCT_MANAGEMENT=false in backend/.env
-  { label: 'Manage', path: '/manage' },
 ]
+
+// The "Manage" page has no login (Phase 1), so we hide its link on the
+// live website by setting VITE_SHOW_MANAGE=false in the hosting settings.
+// Locally (no setting) the link is shown.
+// The backend ALSO blocks changes when ALLOW_PRODUCT_MANAGEMENT=false.
+if (import.meta.env.VITE_SHOW_MANAGE !== 'false') {
+  MENU_ITEMS.push({ label: 'Manage', path: '/manage' })
+}
 
 function Navbar() {
   // Returns the CSS classes for a menu link; the current page is highlighted.
