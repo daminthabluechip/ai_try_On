@@ -90,6 +90,17 @@ def is_cloudinary_configured():
 
 
 # ---------------------------------------------------------------------
+# 3D model feature (free Hugging Face Space)
+# ---------------------------------------------------------------------
+# Which Hugging Face Space turns an image into a 3D model.
+MODEL3D_SPACE = os.getenv("MODEL3D_SPACE", "tencent/Hunyuan3D-2.1").strip()
+
+# Optional free Hugging Face token: gives you your own GPU quota.
+# Empty -> we call the Space anonymously (smaller shared quota).
+HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
+
+
+# ---------------------------------------------------------------------
 # Upload rules
 # ---------------------------------------------------------------------
 max_size_text = os.getenv("MAX_UPLOAD_SIZE_MB", "10")

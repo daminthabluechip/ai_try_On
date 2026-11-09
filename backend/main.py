@@ -16,6 +16,8 @@ This file only does "wiring":
 The real work happens in routes/ and services/.
 """
 
+import mimetypes
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -28,7 +30,7 @@ from config import (
     is_api_key_configured,
     is_cloudinary_configured,
 )
-from routes import products, tryon
+from routes import model3d, products, tryon
 
 
 # ---------------------------------------------------------------------
@@ -73,12 +75,17 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 # else's result, and files are deleted after a while (see routes/tryon.py).
 app.mount("/outputs", StaticFiles(directory=OUTPUTS_DIR), name="outputs")
 
+# 3D models (.glb) are also saved in outputs/. Some computers (especially
+# Windows) don't know the .glb file type, so we tell Python explicitly.
+mimetypes.add_type("model/gltf-binary", ".glb")
+
 
 # ---------------------------------------------------------------------
 # 4. Switch on the endpoints from the routes/ folder
 # ---------------------------------------------------------------------
 app.include_router(products.router)   # GET/POST /products, PUT/DELETE /products/{id}
 app.include_router(tryon.router)      # POST /tryon
+app.include_router(model3d.router)    # POST /model3d  (image -> rotatable 3D model)
 
 
 # ---------------------------------------------------------------------

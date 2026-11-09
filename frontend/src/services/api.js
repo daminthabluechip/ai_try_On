@@ -187,3 +187,57 @@ export async function createTryOn(photoFile, productId) {
   }
   return response.json()
 }
+
+
+// 3D generation on a free GPU can take a few minutes (queue + AI work).
+const MODEL3D_TIMEOUT_MS = 6 * 60 * 1000 // 6 minutes
+
+/**
+ * POST /model3d — turn an image into a rotatable 3D model.
+ *
+ * imageUrl -> address of the image to convert (the try-on result, or its
+ *             rotated copy). We download it first and send it as a file.
+ *
+ * Returns: { model_url }  (address of a .glb 3D model file)
+ */
+export async function create3DModel(imageUrl) {
+  // 1. Get the image as a file ("blob") so we can upload it.
+  let imageBlob
+  try {
+    const imageResponse = await fetch(imageUrl)
+    if (!imageResponse.ok) {
+      throw new Error()
+    }
+    imageBlob = await imageResponse.blob()
+  } catch {
+    throw new Error('The result image is no longer available. Please generate the try-on again.')
+  }
+
+  // 2. Send it to the backend (field name "image", see routes/model3d.py).
+  const formData = new FormData()
+  formData.append('image', imageBlob, 'tryon-result.jpg')
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), MODEL3D_TIMEOUT_MS)
+
+  let response
+  try {
+    response = await fetch(`${API_URL}/model3d`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('The 3D model took too long. The free service may be busy; please try again later.')
+    }
+    throw new Error(`Cannot reach the backend at ${API_URL}. It may be starting up (wait 1 minute and refresh), or the address is wrong.`)
+  } finally {
+    clearTimeout(timeoutId)
+  }
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response))
+  }
+  return response.json()
+}

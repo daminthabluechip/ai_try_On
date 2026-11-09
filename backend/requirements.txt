@@ -16,6 +16,10 @@
 # python-dotenv     -> reads the secret values (API key) from the .env file.
 # cloudinary        -> official Cloudinary library: uploads garment images
 #                      to the cloud and gives back a public https link.
+# gradio_client     -> calls free AI demos ("Spaces") on Hugging Face. We use
+#                      it for the 3D model feature (Hunyuan3D-2.1).
+# pillow            -> opens and resizes images in Python (we shrink the
+#                      image before sending it for 3D generation).
 #
 # TODO: If you add a new library later, add it here so that other
 #       people (and your future self) can install it too.
@@ -26,3 +30,5 @@ python-multipart==0.0.20
 httpx==0.28.1
 python-dotenv==1.2.1
 cloudinary==1.46.3
+gradio_client==2.7.2
+pillow==13.0.0

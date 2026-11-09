@@ -11,16 +11,20 @@
 // If the address is /try-on?product=black-tshirt (coming from the
 // catalog), that product is selected automatically.
 
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { createTryOn, downloadImage, getProducts } from '../services/api.js'
+import { create3DModel, createTryOn, downloadImage, getProducts } from '../services/api.js'
 import BeforeAfterComparison from '../components/BeforeAfterComparison.jsx'
 import { rotateImage } from '../utils/rotateImage.js'
 import PhotoUploader from '../components/PhotoUploader.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import ErrorMessage from '../components/ErrorMessage.jsx'
+
+// The 3D viewer library is big (~1 MB), so we only download it when a 3D
+// model is actually shown ("lazy loading"). The rest of the site stays fast.
+const Model3DViewer = lazy(() => import('../components/Model3DViewer.jsx'))
 
 // Same rules as the backend (backend/config.py). Checking here too gives
 // the user instant feedback without waiting for an upload.
@@ -46,6 +50,8 @@ function TryOnPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [isDownloading, setIsDownloading] = useState(false)
   const [isRotating, setIsRotating] = useState(false)
+  const [isCreating3D, setIsCreating3D] = useState(false)   // true while the 3D AI works
+  const [model3DError, setModel3DError] = useState('')
 
   // A handle to the result section, so we can scroll to it.
   const resultSectionRef = useRef(null)
@@ -149,6 +155,29 @@ function TryOnPage() {
       setErrorMessage(error.message)
     } finally {
       setIsRotating(false)
+    }
+  }
+
+  // Turn the try-on result into a rotatable 3D model (takes 1–3 minutes).
+  async function handleCreate3DModel() {
+    const resultUrl = tryOnResult.result_url
+    setModel3DError('')
+    setIsCreating3D(true)
+    try {
+      const model = await create3DModel(tryOnResult.rotated_url || resultUrl)
+      // Save the model address inside tryOnResult — but only if the user
+      // is still looking at the SAME result (they may have clicked Reset
+      // during the long wait).
+      setTryOnResult((currentResult) => {
+        if (currentResult && currentResult.result_url === resultUrl) {
+          return { ...currentResult, model_url: model.model_url }
+        }
+        return currentResult
+      })
+    } catch (error) {
+      setModel3DError(error.message)
+    } finally {
+      setIsCreating3D(false)
     }
   }
 
@@ -347,6 +376,61 @@ function TryOnPage() {
             <p className="mt-3 text-center text-xs text-muted">
               Your result is stored on the server for about 1 hour, then deleted automatically.
             </p>
+
+            {/* ---------- 3D view (beta) ---------- */}
+            <div className="mt-8 border-t border-stone-200 pt-6">
+              <h3 className="text-center font-display text-xl font-semibold">View in 3D (beta)</h3>
+
+              {/* Not created yet: explain + button */}
+              {!tryOnResult.model_url && !isCreating3D && (
+                <div className="mt-3 text-center">
+                  <p className="mx-auto max-w-xl text-sm text-muted">
+                    Turn this result into a 3D model you can rotate 360°. Uses a free AI demo
+                    (Hunyuan3D-2.1 on Hugging Face) with a small daily limit. Your result image is
+                    sent to Hugging Face to build the model.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleCreate3DModel}
+                    className="mt-4 rounded-full bg-ink px-8 py-3 font-medium text-white transition hover:opacity-90"
+                  >
+                    Create 3D model
+                  </button>
+                </div>
+              )}
+
+              {/* Waiting */}
+              {isCreating3D && (
+                <LoadingSpinner message="Building your 3D model... this usually takes 1–3 minutes. Please keep this page open." />
+              )}
+
+              {/* Error (shown here, so the try-on result stays visible) */}
+              {model3DError && !isCreating3D && (
+                <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700">{model3DError}</p>
+              )}
+
+              {/* Done: the rotatable model + download */}
+              {tryOnResult.model_url && (
+                <div className="mt-4">
+                  <Suspense fallback={<LoadingSpinner message="Loading the 3D viewer..." />}>
+                    <Model3DViewer modelUrl={tryOnResult.model_url} />
+                  </Suspense>
+                  <div className="mt-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => downloadImage(tryOnResult.model_url, `virtual-tryon-${tryOnResult.product_id}.glb`).catch((error) => setModel3DError(error.message))}
+                      className="rounded-full border border-stone-300 px-6 py-2 text-sm transition hover:border-ink"
+                    >
+                      ⬇ Download 3D model (.glb)
+                    </button>
+                  </div>
+                  <p className="mx-auto mt-3 max-w-xl text-center text-xs text-muted">
+                    The 3D model is an AI guess built from one photo: the back and sides are invented
+                    and details (face, hands, logos) may be rough. Use it as a rough preview only.
+                  </p>
+                </div>
+              )}
+            </div>
 
             <p className="mt-4 text-center text-xs text-muted">
               AI-generated preview of appearance only — not a guarantee of size or fit.
