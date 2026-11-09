@@ -171,12 +171,17 @@ def get_friendly_message(error_text):
     """Turn a technical Space error into a sentence a user understands."""
     lowered = error_text.lower()
     if "quota" in lowered:
+        # Keep Hugging Face's own sentence: it says how long to wait,
+        # e.g. "(270s requested vs. 179s left). Try again in 23:42:36."
+        hf_sentence = error_text.strip().strip("'\"").split(" Subscribe")[0]
         return (
-            "The free 3D AI quota is used up for now. Try again later, or add a free "
-            "Hugging Face token (HF_TOKEN) to backend/.env for your own quota."
+            "The free 3D AI quota is used up for now. Try again later, or check the "
+            f"Hugging Face token (HF_TOKEN) in backend/.env. (Details: {hf_sentence})"
         )
     if "timed out" in lowered or "timeout" in lowered:
         return "The 3D AI service took too long. Please try again."
     if "queue" in lowered or "too many" in lowered:
         return "The free 3D AI service is busy. Please try again in a minute."
-    return "The 3D AI service could not create a model from this image. Please try again later."
+    # Unknown error: add the service's own reason (shortened) to help debugging.
+    short_reason = error_text.strip()[:200]
+    return f"The 3D AI service could not create a model. Please try again later. (Details: {short_reason})"
