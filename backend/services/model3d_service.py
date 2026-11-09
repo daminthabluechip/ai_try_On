@@ -35,34 +35,29 @@ Why keep this in one file?
 import shutil
 import uuid
 
-from gradio_client import Client, handle_file
-from PIL import Image, ImageOps
+from gradio_client import handle_file
 
-from config import HF_TOKEN, MODEL3D_SPACE, OUTPUTS_DIR, UPLOADS_DIR
+from config import MODEL3D_SPACE, OUTPUTS_DIR
+from services.hf_space_helpers import (
+    SpaceError,
+    connect_to_space,
+    get_friendly_message,
+    prepare_image,
+    read_file_path,
+)
 
 
 # ---------------------------------------------------------------------
-# Settings
+# AI settings sent to the Space (names come from client.view_api())
 # ---------------------------------------------------------------------
-# Big images upload slowly and the AI works at ~512 px anyway, so we
-# shrink the longest side to this size first.
-MAX_IMAGE_SIDE_PX = 1024
-
-# AI settings sent to the Space (names come from client.view_api()).
 # TODO: More steps = a bit better shape but slower. The Space's "Turbo"
 #       mode uses 5; "Standard" uses 30.
 INFERENCE_STEPS = 5
 # How detailed the 3D shape is (16–512). 256 is the Space's default.
 OCTREE_RESOLUTION = 256
 
-
-class Model3DError(Exception):
-    """Raised when the 3D model cannot be created. The message is user-friendly."""
-
-    def __init__(self, message, status_code=502):
-        super().__init__(message)
-        self.message = message
-        self.status_code = status_code
+# Other files catch this name, so keep it as another name for SpaceError.
+Model3DError = SpaceError
 
 
 # =====================================================================
@@ -91,42 +86,9 @@ def generate_3d_model(image_path):
     return output_path
 
 
-# =====================================================================
-# Step 1: prepare the image
-# =====================================================================
-def prepare_image(image_path):
-    """
-    Make a smaller JPEG copy of the image (faster upload, fewer timeouts).
-    Also applies the phone's rotation info (EXIF), so the image is upright.
-    Returns the path of the copy (in uploads/, deleted after use).
-    """
-    try:
-        with Image.open(image_path) as image:
-            image = ImageOps.exif_transpose(image)       # fix phone rotation
-            image = image.convert("RGB")                 # JPEG has no transparency
-            image.thumbnail((MAX_IMAGE_SIDE_PX, MAX_IMAGE_SIDE_PX))  # keeps the shape
-            small_image_path = UPLOADS_DIR / (uuid.uuid4().hex + ".jpg")
-            image.save(small_image_path, "JPEG", quality=90)
-    except Exception as error:
-        print(f"[model3d_service] Could not read image: {error}")
-        raise Model3DError("This image could not be read. Please try another image.", status_code=400)
-    return small_image_path
-
-
-# =====================================================================
-# Step 2: ask the Hugging Face Space to build the 3D model
-# =====================================================================
 def call_space(image_path):
     """Send the image to the Space and return the local path of the .glb result."""
-    try:
-        # token=None -> anonymous use (smaller shared free quota).
-        client = Client(MODEL3D_SPACE, token=HF_TOKEN or None, verbose=False)
-    except Exception as error:
-        print(f"[model3d_service] Could not connect to {MODEL3D_SPACE}: {error}")
-        raise Model3DError(
-            "The free 3D AI service is offline or starting up. Please try again in a few minutes.",
-            status_code=503,
-        )
+    client = connect_to_space(MODEL3D_SPACE)
 
     try:
         result = client.predict(
@@ -152,36 +114,8 @@ def call_space(image_path):
     # The Space returns 5 things:
     #   (white_mesh file, textured_mesh.glb, html preview, mesh stats, seed)
     # We want the second one: the textured .glb model.
-    textured_model = result[1]
-    glb_path = read_file_path(textured_model)
+    glb_path = read_file_path(result[1])
     if not glb_path or not glb_path.endswith(".glb"):
         print(f"[model3d_service] Unexpected result: {str(result)[:300]}")
         raise Model3DError("The 3D AI service returned an unexpected result. Please try again.")
     return glb_path
-
-
-def read_file_path(file_value):
-    """Gradio returns a file either as a path text or as {"value": path}."""
-    if isinstance(file_value, dict):
-        return file_value.get("value")
-    return file_value
-
-
-def get_friendly_message(error_text):
-    """Turn a technical Space error into a sentence a user understands."""
-    lowered = error_text.lower()
-    if "quota" in lowered:
-        # Keep Hugging Face's own sentence: it says how long to wait,
-        # e.g. "(270s requested vs. 179s left). Try again in 23:42:36."
-        hf_sentence = error_text.strip().strip("'\"").split(" Subscribe")[0]
-        return (
-            "The free 3D AI quota is used up for now. Try again later, or check the "
-            f"Hugging Face token (HF_TOKEN) in backend/.env. (Details: {hf_sentence})"
-        )
-    if "timed out" in lowered or "timeout" in lowered:
-        return "The 3D AI service took too long. Please try again."
-    if "queue" in lowered or "too many" in lowered:
-        return "The free 3D AI service is busy. Please try again in a minute."
-    # Unknown error: add the service's own reason (shortened) to help debugging.
-    short_reason = error_text.strip()[:200]
-    return f"The 3D AI service could not create a model. Please try again later. (Details: {short_reason})"

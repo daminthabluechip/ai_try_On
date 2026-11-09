@@ -16,6 +16,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { create3DModel, createTryOn, downloadImage, getProducts } from '../services/api.js'
 import BeforeAfterComparison from '../components/BeforeAfterComparison.jsx'
+import ViewAnglePanel from '../components/ViewAnglePanel.jsx'
 import { rotateImage } from '../utils/rotateImage.js'
 import PhotoUploader from '../components/PhotoUploader.jsx'
 import ProductCard from '../components/ProductCard.jsx'
@@ -376,6 +377,14 @@ function TryOnPage() {
             <p className="mt-3 text-center text-xs text-muted">
               Your result is stored on the server for about 1 hour, then deleted automatically.
             </p>
+
+            {/* ---------- Another viewing angle (beta) ----------
+                key=... -> a new/rotated result gives a fresh, empty panel. */}
+            <ViewAnglePanel
+              key={tryOnResult.rotated_url || tryOnResult.result_url}
+              sourceUrl={tryOnResult.rotated_url || tryOnResult.result_url}
+              productId={tryOnResult.product_id}
+            />
 
             {/* ---------- 3D view (beta) ---------- */}
             <div className="mt-8 border-t border-stone-200 pt-6">

@@ -241,3 +241,56 @@ export async function create3DModel(imageUrl) {
   }
   return response.json()
 }
+
+
+/**
+ * POST /view-angle — redraw the person from another camera angle.
+ *
+ * imageUrl      -> the image to redraw (the try-on result)
+ * rotateDegrees -> -90 ... 90  (positive = camera moves LEFT, negative = RIGHT)
+ * verticalTilt  -> -1 (from above), 0 (eye level), 1 (from below)
+ *
+ * Returns: { image_url }
+ */
+export async function createNewAngle(imageUrl, rotateDegrees, verticalTilt) {
+  let imageBlob
+  try {
+    const imageResponse = await fetch(imageUrl)
+    if (!imageResponse.ok) {
+      throw new Error()
+    }
+    imageBlob = await imageResponse.blob()
+  } catch {
+    throw new Error('The result image is no longer available. Please generate the try-on again.')
+  }
+
+  // Field names must match routes/view_angle.py.
+  const formData = new FormData()
+  formData.append('image', imageBlob, 'tryon-result.jpg')
+  formData.append('rotate_degrees', String(rotateDegrees))
+  formData.append('vertical_tilt', String(verticalTilt))
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), MODEL3D_TIMEOUT_MS)
+
+  let response
+  try {
+    response = await fetch(`${API_URL}/view-angle`, {
+      method: 'POST',
+      body: formData,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('The new angle took too long. The free service may be busy; please try again later.')
+    }
+    throw new Error(`Cannot reach the backend at ${API_URL}. It may be starting up (wait 1 minute and refresh), or the address is wrong.`)
+  } finally {
+    clearTimeout(timeoutId)
+  }
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response))
+  }
+  return response.json()
+}

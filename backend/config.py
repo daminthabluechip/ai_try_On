@@ -95,6 +95,9 @@ def is_cloudinary_configured():
 # Which Hugging Face Space turns an image into a 3D model.
 MODEL3D_SPACE = os.getenv("MODEL3D_SPACE", "tencent/Hunyuan3D-2.1").strip()
 
+# Which Hugging Face Space redraws the person from another camera angle.
+VIEW_ANGLE_SPACE = os.getenv("VIEW_ANGLE_SPACE", "linoyts/Qwen-Image-Edit-Angles").strip()
+
 # Optional free Hugging Face token: gives you your own GPU quota.
 # Empty -> we call the Space anonymously (smaller shared quota).
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
