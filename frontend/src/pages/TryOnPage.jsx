@@ -16,6 +16,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { createTryOn, downloadImage, getProducts } from '../services/api.js'
 import BeforeAfterComparison from '../components/BeforeAfterComparison.jsx'
+import { rotateImage } from '../utils/rotateImage.js'
 import PhotoUploader from '../components/PhotoUploader.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
@@ -44,6 +45,7 @@ function TryOnPage() {
   const [tryOnResult, setTryOnResult] = useState(null)       // backend answer
   const [errorMessage, setErrorMessage] = useState('')
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isRotating, setIsRotating] = useState(false)
 
   // A handle to the result section, so we can scroll to it.
   const resultSectionRef = useRef(null)
@@ -124,7 +126,33 @@ function TryOnPage() {
     }
   }
 
-  // Save the generated image to the user's computer.
+  // Rotate the result image. direction: 90 = right (clockwise), -90 = left.
+  // The rotation is stored INSIDE tryOnResult, so a new result (or Reset)
+  // automatically starts un-rotated again.
+  async function handleRotate(direction) {
+    const currentRotation = tryOnResult.rotation || 0
+    // "+ 360" and "% 360" keep the value between 0 and 270.
+    const newRotation = (currentRotation + direction + 360) % 360
+
+    setIsRotating(true)
+    try {
+      let rotatedUrl = null
+      if (newRotation !== 0) {
+        rotatedUrl = await rotateImage(tryOnResult.result_url, newRotation)
+      }
+      // Free the memory of the previous rotated copy.
+      if (tryOnResult.rotated_url) {
+        URL.revokeObjectURL(tryOnResult.rotated_url)
+      }
+      setTryOnResult({ ...tryOnResult, rotation: newRotation, rotated_url: rotatedUrl })
+    } catch (error) {
+      setErrorMessage(error.message)
+    } finally {
+      setIsRotating(false)
+    }
+  }
+
+  // Save the generated image (rotated, if the user rotated it).
   async function handleDownload() {
     // Keep the same file type as the result, e.g. ".png" or ".jpg".
     const resultUrl = tryOnResult.result_url
@@ -133,7 +161,7 @@ function TryOnPage() {
 
     setIsDownloading(true)
     try {
-      await downloadImage(resultUrl, fileName)
+      await downloadImage(tryOnResult.rotated_url || resultUrl, fileName)
     } catch (error) {
       setErrorMessage(error.message)
     } finally {
@@ -271,7 +299,30 @@ function TryOnPage() {
 
             {/* Before (the user's photo) vs After (the AI result) */}
             <div className="mt-6">
-              <BeforeAfterComparison beforeUrl={photoPreviewUrl} afterUrl={tryOnResult.result_url} />
+              <BeforeAfterComparison
+                beforeUrl={photoPreviewUrl}
+                afterUrl={tryOnResult.rotated_url || tryOnResult.result_url}
+              />
+            </div>
+
+            {/* Rotate the result (also changes the downloaded image) */}
+            <div className="mt-4 flex justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleRotate(-90)}
+                disabled={isRotating}
+                className="rounded-full border border-stone-300 px-4 py-1.5 text-sm transition hover:border-ink disabled:opacity-50"
+              >
+                ↺ Rotate left
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRotate(90)}
+                disabled={isRotating}
+                className="rounded-full border border-stone-300 px-4 py-1.5 text-sm transition hover:border-ink disabled:opacity-50"
+              >
+                ↻ Rotate right
+              </button>
             </div>
 
             {/* Actions */}

@@ -13,6 +13,8 @@
 //
 // Note: the AI crops the photo around the person (4:5 shape), so in the
 // slider view the two images may not line up perfectly.
+// The "after" image uses object-contain (whole image visible, no cropping),
+// so it still fits nicely after the user rotates it sideways.
 
 import { useState } from 'react'
 
@@ -56,7 +58,7 @@ function BeforeAfterComparison({ beforeUrl, afterUrl }) {
             <figcaption className="mt-2 text-center text-sm text-muted">Before</figcaption>
           </figure>
           <figure>
-            <img src={afterUrl} alt="AI try-on result" className="aspect-[4/5] w-full rounded-xl bg-stone-100 object-cover" />
+            <img src={afterUrl} alt="AI try-on result" className="aspect-[4/5] w-full rounded-xl bg-stone-100 object-contain" />
             <figcaption className="mt-2 text-center text-sm font-medium text-brand">After</figcaption>
           </figure>
         </div>
@@ -68,7 +70,7 @@ function BeforeAfterComparison({ beforeUrl, afterUrl }) {
           {/* "relative" lets us stack the images on top of each other */}
           <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-stone-100 select-none">
             {/* Bottom layer: the AFTER image (always fully visible) */}
-            <img src={afterUrl} alt="AI try-on result" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={afterUrl} alt="AI try-on result" className="absolute inset-0 h-full w-full object-contain" />
 
             {/* Top layer: the BEFORE image, cut off on the right side.
                 clip-path "inset(0 X% 0 0)" hides X% from the right edge. */}
