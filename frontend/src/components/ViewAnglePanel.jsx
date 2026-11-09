@@ -65,11 +65,6 @@ function ViewAnglePanel({ sourceUrl, productId }) {
   return (
     <div className="mt-8 border-t border-stone-200 pt-6">
       <h3 className="text-center font-display text-xl font-semibold">See it from another angle (beta)</h3>
-      <p className="mx-auto mt-2 max-w-xl text-center text-sm text-muted">
-        Move the camera around the person and the AI redraws the same outfit from that side.
-        Uses a free AI demo (Qwen-Image-Edit on Hugging Face) with a small daily limit; your
-        result image is sent to Hugging Face.
-      </p>
 
       {/* ---------- Controls ---------- */}
       <div className="mx-auto mt-5 max-w-md space-y-4">
@@ -159,10 +154,6 @@ function ViewAnglePanel({ sourceUrl, productId }) {
               ⬇ Download new angle
             </button>
           </div>
-          <p className="mx-auto mt-3 max-w-xl text-center text-xs text-muted">
-            The new view is imagined by AI: parts that were hidden in the original (sides, back)
-            are invented and may not match the real garment.
-          </p>
         </div>
       )}
     </div>

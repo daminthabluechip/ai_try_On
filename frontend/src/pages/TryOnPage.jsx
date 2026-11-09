@@ -393,11 +393,6 @@ function TryOnPage() {
               {/* Not created yet: explain + button */}
               {!tryOnResult.model_url && !isCreating3D && (
                 <div className="mt-3 text-center">
-                  <p className="mx-auto max-w-xl text-sm text-muted">
-                    Turn this result into a 3D model you can rotate 360°. Uses a free AI demo
-                    (Hunyuan3D-2.1 on Hugging Face) with a small daily limit. Your result image is
-                    sent to Hugging Face to build the model.
-                  </p>
                   <button
                     type="button"
                     onClick={handleCreate3DModel}
@@ -433,10 +428,6 @@ function TryOnPage() {
                       ⬇ Download 3D model (.glb)
                     </button>
                   </div>
-                  <p className="mx-auto mt-3 max-w-xl text-center text-xs text-muted">
-                    The 3D model is an AI guess built from one photo: the back and sides are invented
-                    and details (face, hands, logos) may be rough. Use it as a rough preview only.
-                  </p>
                 </div>
               )}
             </div>
