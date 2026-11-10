@@ -65,3 +65,7 @@ dist/
 .DS_Store
 Thumbs.db
 *.log
+
+# TripoSR Flask server: the official TripoSR code is downloaded with
+# "git clone" (see triposr_server/README.md), so it is not stored here.
+triposr_server/TripoSR/

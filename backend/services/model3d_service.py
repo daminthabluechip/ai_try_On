@@ -4,13 +4,17 @@ model3d_service.py  —  the ONLY file that talks to the 3D model AI.
 What it does:
     one 2D image  ->  a coloured 3D model (.glb file) you can rotate 360°.
 
-Two free AI engines are supported (choose with MODEL3D_ENGINE in .env):
+Three free AI engines are supported (choose with MODEL3D_ENGINE in .env):
 
     "triposr"  (DEFAULT)  TripoSR by Stability AI & Tripo.
                Runs in a free Hugging Face Space on CPU, so it does NOT use
                the daily Hugging Face GPU quota. ~1–2 minutes per model.
                Space: TRIPOSR_SPACE (default WeReCooking2/Dust3R-TripoSR).
                Colours are stored per point ("vertex colours").
+
+    "flask"    TripoSR running on YOUR computer, through our own Flask API
+               (triposr_server/app.py). No third party, no quota, but that
+               server must be running. Address: TRIPOSR_API_URL.
 
     "hunyuan"  Hunyuan3D-2.1 by Tencent. Better shape and a real texture,
                but uses the free GPU quota (~1 model per day per account).
@@ -45,9 +49,10 @@ Why keep this in one file?
 import shutil
 import uuid
 
+import httpx
 from gradio_client import handle_file
 
-from config import MODEL3D_ENGINE, MODEL3D_SPACE, OUTPUTS_DIR, TRIPOSR_SPACE
+from config import MODEL3D_ENGINE, MODEL3D_SPACE, OUTPUTS_DIR, TRIPOSR_API_URL, TRIPOSR_SPACE
 from services.hf_space_helpers import (
     SpaceError,
     connect_to_space,
@@ -88,6 +93,9 @@ def generate_3d_model(image_path):
     """
     small_image_path = prepare_image(image_path)
     try:
+        if MODEL3D_ENGINE == "flask":
+            # Our own server sends the file back directly: save and return.
+            return generate_with_flask_server(small_image_path)
         if MODEL3D_ENGINE == "hunyuan":
             glb_temp_path = generate_with_hunyuan(small_image_path)
         else:
@@ -145,7 +153,51 @@ def generate_with_triposr(image_path):
 
 
 # =====================================================================
-# Engine 2: Hunyuan3D-2.1 (optional)
+# Engine 2: our own TripoSR Flask server (triposr_server/app.py)
+# =====================================================================
+# Building a model on a laptop processor takes 1–3 minutes.
+FLASK_TIMEOUT_SECONDS = 600
+
+
+def generate_with_flask_server(image_path):
+    """
+    Send the image to POST {TRIPOSR_API_URL}/generate and save the .glb
+    file it sends back into outputs/. Returns the saved path.
+    """
+    try:
+        with open(image_path, "rb") as image_file:
+            response = httpx.post(
+                f"{TRIPOSR_API_URL}/generate",
+                files={"image": (image_path.name, image_file, "image/jpeg")},
+                timeout=FLASK_TIMEOUT_SECONDS,
+            )
+    except httpx.TimeoutException:
+        raise Model3DError("The TripoSR server took too long. Please try again.", status_code=504)
+    except httpx.RequestError:
+        raise Model3DError(
+            f"The TripoSR server is not running at {TRIPOSR_API_URL}. "
+            "Start it with: python app.py (in the triposr_server folder).",
+            status_code=503,
+        )
+
+    if not response.is_success:
+        # The Flask server sends errors as {"detail": "..."}.
+        try:
+            reason = response.json().get("detail", "")
+        except ValueError:
+            reason = response.text[:200]
+        print(f"[model3d_service] TripoSR server error {response.status_code}: {reason}")
+        status_code = 400 if response.status_code == 400 else 502
+        raise Model3DError(f"The TripoSR server could not build the model. ({reason})", status_code=status_code)
+
+    output_path = OUTPUTS_DIR / (uuid.uuid4().hex + ".glb")
+    with open(output_path, "wb") as output_file:
+        output_file.write(response.content)
+    return output_path
+
+
+# =====================================================================
+# Engine 3: Hunyuan3D-2.1 (optional)
 # =====================================================================
 def generate_with_hunyuan(image_path):
     """Send the image to Hunyuan3D-2.1 and return the local .glb path."""

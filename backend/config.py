@@ -92,16 +92,19 @@ def is_cloudinary_configured():
 # ---------------------------------------------------------------------
 # 3D model feature (free Hugging Face Space)
 # ---------------------------------------------------------------------
-# Which free AI builds the 3D model: "triposr" (default, CPU, no GPU quota)
-# or "hunyuan" (better quality, but uses the small daily GPU quota).
+# Which AI builds the 3D model:
+#   "triposr" (default) -> TripoSR in a free Hugging Face Space (CPU, no GPU quota)
+#   "flask"             -> TripoSR on YOUR computer, through triposr_server/app.py
+#   "hunyuan"           -> Hunyuan3D-2.1 (better quality, small daily GPU quota)
 MODEL3D_ENGINE = os.getenv("MODEL3D_ENGINE", "triposr").strip().lower()
+
+# Address of our own TripoSR Flask server (only used when MODEL3D_ENGINE=flask).
+TRIPOSR_API_URL = os.getenv("TRIPOSR_API_URL", "http://127.0.0.1:5000").strip().rstrip("/")
 
 # The Hugging Face Space for each engine.
 TRIPOSR_SPACE = os.getenv("TRIPOSR_SPACE", "WeReCooking2/Dust3R-TripoSR").strip()
 MODEL3D_SPACE = os.getenv("MODEL3D_SPACE", "tencent/Hunyuan3D-2.1").strip()   # Hunyuan3D
 
-# Which Hugging Face Space redraws the person from another camera angle.
-VIEW_ANGLE_SPACE = os.getenv("VIEW_ANGLE_SPACE", "linoyts/Qwen-Image-Edit-Angles").strip()
 
 # Optional free Hugging Face token: gives you your own GPU quota.
 # Empty -> we call the Space anonymously (smaller shared quota).

@@ -30,7 +30,7 @@ from config import (
     is_api_key_configured,
     is_cloudinary_configured,
 )
-from routes import model3d, products, tryon, view_angle
+from routes import model3d, products, tryon
 
 
 # ---------------------------------------------------------------------
@@ -86,7 +86,6 @@ mimetypes.add_type("model/gltf-binary", ".glb")
 app.include_router(products.router)   # GET/POST /products, PUT/DELETE /products/{id}
 app.include_router(tryon.router)      # POST /tryon
 app.include_router(model3d.router)    # POST /model3d  (image -> rotatable 3D model)
-app.include_router(view_angle.router) # POST /view-angle  (same person, another camera angle)
 
 
 # ---------------------------------------------------------------------

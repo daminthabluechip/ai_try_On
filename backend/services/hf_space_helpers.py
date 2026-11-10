@@ -3,10 +3,9 @@ hf_space_helpers.py  —  small helpers shared by the features that use
 free Hugging Face "Spaces" (AI demos):
 
     - services/model3d_service.py     (image -> 3D model)
-    - services/view_angle_service.py  (image -> same person from another angle)
 
-Keeping them here means both features shrink images and explain errors
-in exactly the same way.
+Keeping them in their own file keeps model3d_service.py short, and any
+future Hugging Face feature can reuse them.
 """
 
 import uuid
