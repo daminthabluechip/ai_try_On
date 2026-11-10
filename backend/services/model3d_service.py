@@ -1,29 +1,39 @@
 """
 model3d_service.py  —  the ONLY file that talks to the 3D model AI.
 
-Current provider: Hunyuan3D-2.1 by Tencent, running as a FREE demo
-("Space") on Hugging Face:
-    https://huggingface.co/spaces/tencent/Hunyuan3D-2.1
-
 What it does:
-    one 2D image  ->  a textured 3D model (.glb file) you can rotate 360°.
+    one 2D image  ->  a coloured 3D model (.glb file) you can rotate 360°.
 
-How we talk to it:
+Two free AI engines are supported (choose with MODEL3D_ENGINE in .env):
+
+    "triposr"  (DEFAULT)  TripoSR by Stability AI & Tripo.
+               Runs in a free Hugging Face Space on CPU, so it does NOT use
+               the daily Hugging Face GPU quota. ~1–2 minutes per model.
+               Space: TRIPOSR_SPACE (default WeReCooking2/Dust3R-TripoSR).
+               Colours are stored per point ("vertex colours").
+
+    "hunyuan"  Hunyuan3D-2.1 by Tencent. Better shape and a real texture,
+               but uses the free GPU quota (~1 model per day per account).
+               Space: MODEL3D_SPACE (default tencent/Hunyuan3D-2.1).
+
+How we talk to them:
     Hugging Face Spaces are Gradio apps. The official "gradio_client"
-    library calls them like a normal Python function:
-        client.predict(image=..., api_name="/generation_all")
-    We checked the exact inputs/outputs with client.view_api().
+    library calls them like a normal Python function. We checked the exact
+    inputs/outputs of each Space with client.view_api() and tested them.
 
 Background removal:
-    The Space has a built-in option "check_box_rembg" that removes the
-    background with the rembg tool ON THEIR GPU before building the model.
-    We switch it on, so we don't need to install rembg ourselves (rembg +
-    its AI model need ~1 GB of memory, more than a free Render server has).
+    Both Spaces remove the background themselves (with the rembg tool) on
+    their servers, so we don't install rembg (it needs ~1 GB of memory,
+    more than a free Render server has).
+      TripoSR  -> step "/preprocess" with remove_background = True
+      Hunyuan  -> option "check_box_rembg" = True
 
 Honest limits (tell your mentor!):
     - A 3D model from ONE photo is an AI guess: the back and sides are
       invented, faces/hands are often rough. It is a preview, not a scan.
-    - Free Spaces have a daily GPU quota and can be busy or offline.
+    - Free Spaces are run by volunteers/companies and can be busy, slow
+      or switched off at any time. If one stops working, change the Space
+      name in .env.
     - The image is sent to Hugging Face (a third party) for processing.
 
 Why keep this in one file?
@@ -37,7 +47,7 @@ import uuid
 
 from gradio_client import handle_file
 
-from config import MODEL3D_SPACE, OUTPUTS_DIR
+from config import MODEL3D_ENGINE, MODEL3D_SPACE, OUTPUTS_DIR, TRIPOSR_SPACE
 from services.hf_space_helpers import (
     SpaceError,
     connect_to_space,
@@ -46,18 +56,22 @@ from services.hf_space_helpers import (
     read_file_path,
 )
 
-
-# ---------------------------------------------------------------------
-# AI settings sent to the Space (names come from client.view_api())
-# ---------------------------------------------------------------------
-# TODO: More steps = a bit better shape but slower. The Space's "Turbo"
-#       mode uses 5; "Standard" uses 30.
-INFERENCE_STEPS = 5
-# How detailed the 3D shape is (16–512). 256 is the Space's default.
-OCTREE_RESOLUTION = 256
-
 # Other files catch this name, so keep it as another name for SpaceError.
 Model3DError = SpaceError
+
+
+# ---------------------------------------------------------------------
+# AI settings
+# ---------------------------------------------------------------------
+# TripoSR: how detailed the 3D surface is (32–512). Higher = finer but
+# slower and a bigger file. 256 is the Space's default.
+TRIPOSR_RESOLUTION = 256
+# TripoSR: how much of the picture the person fills after cropping (0.5–1.0).
+TRIPOSR_FOREGROUND_RATIO = 0.85
+
+# Hunyuan3D: steps (5 = "Turbo", 30 = "Standard") and surface detail.
+HUNYUAN_STEPS = 5
+HUNYUAN_OCTREE_RESOLUTION = 256
 
 
 # =====================================================================
@@ -69,12 +83,15 @@ def generate_3d_model(image_path):
     Returns the path of the saved .glb file in outputs/.
     Raises Model3DError if anything goes wrong.
 
-    This takes about 1–3 minutes, so routes call it with asyncio.to_thread
+    This takes 1–3 minutes, so routes call it with asyncio.to_thread
     (otherwise the whole backend would freeze while waiting).
     """
     small_image_path = prepare_image(image_path)
     try:
-        glb_temp_path = call_space(small_image_path)
+        if MODEL3D_ENGINE == "hunyuan":
+            glb_temp_path = generate_with_hunyuan(small_image_path)
+        else:
+            glb_temp_path = generate_with_triposr(small_image_path)
     finally:
         small_image_path.unlink(missing_ok=True)
 
@@ -86,8 +103,52 @@ def generate_3d_model(image_path):
     return output_path
 
 
-def call_space(image_path):
-    """Send the image to the Space and return the local path of the .glb result."""
+# =====================================================================
+# Engine 1: TripoSR (default)
+# =====================================================================
+def generate_with_triposr(image_path):
+    """
+    Two steps, exactly like the TripoSR website:
+      1. /preprocess -> remove the background and centre the person
+      2. /generate   -> build the 3D model from the cleaned image
+
+    We pass the values in ORDER (not by name): copies of the TripoSR demo
+    use slightly different input names, but always the same order.
+    """
+    client = connect_to_space(TRIPOSR_SPACE)
+
+    try:
+        # Step 1: (image, remove background?, foreground ratio) -> clean image
+        cleaned_image = client.predict(
+            handle_file(str(image_path)),
+            True,
+            TRIPOSR_FOREGROUND_RATIO,
+            api_name="/preprocess",
+        )
+        cleaned_image_path = read_file_path(cleaned_image)
+
+        # Step 2: (clean image, resolution) -> 3D model.
+        # Some copies return only the .glb, others (.obj, .glb):
+        # in both cases the .glb is the LAST item.
+        result = client.predict(
+            handle_file(cleaned_image_path),
+            TRIPOSR_RESOLUTION,
+            api_name="/generate",
+        )
+    except Exception as error:
+        print(f"[model3d_service] TripoSR error: {type(error).__name__}: {error}")
+        raise Model3DError(get_friendly_message(str(error)))
+
+    if isinstance(result, (list, tuple)):
+        result = result[-1]
+    return check_glb(read_file_path(result), result)
+
+
+# =====================================================================
+# Engine 2: Hunyuan3D-2.1 (optional)
+# =====================================================================
+def generate_with_hunyuan(image_path):
+    """Send the image to Hunyuan3D-2.1 and return the local .glb path."""
     client = connect_to_space(MODEL3D_SPACE)
 
     try:
@@ -98,24 +159,26 @@ def call_space(image_path):
             mv_image_back=None,
             mv_image_left=None,
             mv_image_right=None,
-            steps=INFERENCE_STEPS,
+            steps=HUNYUAN_STEPS,
             guidance_scale=5.0,
             seed=1234,
-            octree_resolution=OCTREE_RESOLUTION,
+            octree_resolution=HUNYUAN_OCTREE_RESOLUTION,
             check_box_rembg=True,   # remove the background (done by the Space)
             num_chunks=8000,
             randomize_seed=True,
             api_name="/generation_all",   # shape + colours (texture)
         )
     except Exception as error:
-        print(f"[model3d_service] Space error: {type(error).__name__}: {error}")
+        print(f"[model3d_service] Hunyuan3D error: {type(error).__name__}: {error}")
         raise Model3DError(get_friendly_message(str(error)))
 
-    # The Space returns 5 things:
-    #   (white_mesh file, textured_mesh.glb, html preview, mesh stats, seed)
-    # We want the second one: the textured .glb model.
-    glb_path = read_file_path(result[1])
-    if not glb_path or not glb_path.endswith(".glb"):
-        print(f"[model3d_service] Unexpected result: {str(result)[:300]}")
+    # Returns (white_mesh, textured_mesh.glb, html, stats, seed): we want #2.
+    return check_glb(read_file_path(result[1]), result)
+
+
+def check_glb(glb_path, raw_result):
+    """Make sure the Space really gave us a .glb file."""
+    if not glb_path or not str(glb_path).endswith(".glb"):
+        print(f"[model3d_service] Unexpected result: {str(raw_result)[:300]}")
         raise Model3DError("The 3D AI service returned an unexpected result. Please try again.")
     return glb_path

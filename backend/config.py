@@ -92,8 +92,13 @@ def is_cloudinary_configured():
 # ---------------------------------------------------------------------
 # 3D model feature (free Hugging Face Space)
 # ---------------------------------------------------------------------
-# Which Hugging Face Space turns an image into a 3D model.
-MODEL3D_SPACE = os.getenv("MODEL3D_SPACE", "tencent/Hunyuan3D-2.1").strip()
+# Which free AI builds the 3D model: "triposr" (default, CPU, no GPU quota)
+# or "hunyuan" (better quality, but uses the small daily GPU quota).
+MODEL3D_ENGINE = os.getenv("MODEL3D_ENGINE", "triposr").strip().lower()
+
+# The Hugging Face Space for each engine.
+TRIPOSR_SPACE = os.getenv("TRIPOSR_SPACE", "WeReCooking2/Dust3R-TripoSR").strip()
+MODEL3D_SPACE = os.getenv("MODEL3D_SPACE", "tencent/Hunyuan3D-2.1").strip()   # Hunyuan3D
 
 # Which Hugging Face Space redraws the person from another camera angle.
 VIEW_ANGLE_SPACE = os.getenv("VIEW_ANGLE_SPACE", "linoyts/Qwen-Image-Edit-Angles").strip()
