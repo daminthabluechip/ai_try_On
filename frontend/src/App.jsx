@@ -1,14 +1,3 @@
-// =====================================================================
-// App.jsx  —  the frame of the website.
-// =====================================================================
-// Every page shows the same Navbar at the top.
-// Below it, <Routes> picks which page to show based on the address:
-//
-//   http://localhost:5173/          -> HomePage
-//   http://localhost:5173/catalog   -> CatalogPage
-//   http://localhost:5173/try-on    -> TryOnPage
-//   http://localhost:5173/manage    -> ManageProductsPage (upload garment images)
-//
 // TODO: To add a new page, create it in src/pages/ and add a <Route> below.
 
 import { Routes, Route } from 'react-router-dom'
@@ -22,8 +11,6 @@ import NotFoundPage from './pages/NotFoundPage.jsx'
 
 function App() {
   return (
-    // "min-h-screen flex flex-col" keeps the footer at the bottom
-    // even when a page has little content.
     <div className="flex min-h-screen flex-col">
       <Navbar />
 
@@ -33,7 +20,6 @@ function App() {
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/try-on" element={<TryOnPage />} />
           <Route path="/manage" element={<ManageProductsPage />} />
-          {/* "*" matches any other address: show a friendly 404 page */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>

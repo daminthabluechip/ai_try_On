@@ -1,23 +1,9 @@
 """
-routes/products.py  —  catalog endpoints.
+Catalog endpoints: list, add, replace image, delete.
 
-    GET    /products                 -> list all products (used by the shop pages)
-    POST   /products                 -> add a new product with an image
-    PUT    /products/{id}/image      -> upload / replace a product's image
-    DELETE /products/{id}            -> delete a product and its image
-
-The last three are used by the "Manage Products" page in the frontend.
-
-SECURITY NOTE (important before deploying!):
-    Phase 1 has no login system, so ANYONE who can open the website could
-    use the three "change" endpoints. That is fine on your own computer.
-    Before putting the site online, set ALLOW_PRODUCT_MANAGEMENT=false in
-    backend/.env (the endpoints then refuse all changes).
-    TODO (Phase 2): protect these endpoints with a proper admin login.
-
-How it connects:
-    main.py "includes" this router. All reading/writing of products.json
-    happens in services/product_service.py.
+The change endpoints have no login in Phase 1, so set
+ALLOW_PRODUCT_MANAGEMENT=false on the live site.
+TODO (Phase 2): protect them with a proper admin login.
 """
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -35,37 +21,20 @@ from services.product_service import (
 )
 from services.storage_service import StorageError
 
-# An APIRouter is a small group of endpoints. main.py plugs it into the app.
 router = APIRouter()
 
 
-# =====================================================================
-# Helpers
-# =====================================================================
 def prepare_for_frontend(product, backend_address):
-    """
-    Add two extra fields the frontend needs:
-      image_url       -> full web address of the picture
-      image_available -> False if the image file is missing (show a placeholder)
-    """
+    """Add image_url (full address) and image_available for the frontend."""
     product_copy = dict(product)
     product_copy["image_available"] = product_image_exists(product)
     product_copy["image_url"] = None
 
-    # Case 1: the image is online (e.g. Cloudinary) -> use that link directly.
     online_url = get_online_image_url(product)
     if online_url:
         product_copy["image_url"] = online_url
-
-    # Case 2: the image is a local file in backend/static/products/.
     elif product_copy["image_available"]:
-        # FastAPI serves the "static" folder (see main.py), so
-        # static/products/black-tshirt.jpg is reachable at
-        # http://127.0.0.1:8000/static/products/black-tshirt.jpg
-        #
-        # "?v=<number>" changes whenever the file changes. Without it the
-        # browser might keep showing an OLD cached picture after you
-        # upload a new one with the same file name.
+        # "?v=" changes when the file changes, so browsers don't show a cached old image.
         file_version = int(get_product_image_path(product).stat().st_mtime)
         product_copy["image_url"] = (
             f"{backend_address}static/products/{product['image']}?v={file_version}"
@@ -75,7 +44,6 @@ def prepare_for_frontend(product, backend_address):
 
 
 def check_management_allowed():
-    """Stop the request if product management is switched off in .env."""
     if not ALLOW_PRODUCT_MANAGEMENT:
         raise HTTPException(
             status_code=403,
@@ -84,7 +52,7 @@ def check_management_allowed():
 
 
 async def read_and_validate_image(image):
-    """Read an uploaded garment image and check type/size. Returns the bytes."""
+    """Read an uploaded garment image, check it and return its bytes."""
     if image is None:
         raise HTTPException(status_code=400, detail="Please choose an image file.")
 
@@ -96,13 +64,8 @@ async def read_and_validate_image(image):
     return image_bytes
 
 
-# =====================================================================
-# Endpoints
-# =====================================================================
 @router.get("/products")
 def get_products(request: Request):
-    """Return the full clothing catalog."""
-    # request.base_url is the backend's own address, e.g. "http://127.0.0.1:8000/"
     backend_address = str(request.base_url)
 
     products_for_frontend = []
@@ -120,7 +83,6 @@ async def create_product(
     description: str = Form(""),
     image: UploadFile = File(None),
 ):
-    """Add a new product. The form must include a name, category, price and image."""
     check_management_allowed()
 
     name = name.strip()
@@ -151,7 +113,6 @@ async def create_product(
 
 @router.put("/products/{product_id}/image")
 async def upload_product_image(product_id: str, request: Request, image: UploadFile = File(None)):
-    """Upload (or replace) the garment image of an existing product."""
     check_management_allowed()
 
     image_bytes = await read_and_validate_image(image)
@@ -167,7 +128,6 @@ async def upload_product_image(product_id: str, request: Request, image: UploadF
 
 @router.delete("/products/{product_id}")
 def remove_product(product_id: str):
-    """Delete a product and its image file."""
     check_management_allowed()
 
     was_deleted = delete_product(product_id)

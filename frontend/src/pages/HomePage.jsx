@@ -1,12 +1,5 @@
-// =====================================================================
-// HomePage.jsx  —  the landing page (address: "/").
-// =====================================================================
-// A big welcome section, a "Start Try-On" button and a short
-// "How it works" explanation. No backend calls on this page.
-
 import { Link } from 'react-router-dom'
 
-// The three steps shown in "How it works".
 // TODO: Change these texts to describe your project in your own words.
 const HOW_IT_WORKS_STEPS = [
   {
@@ -29,7 +22,6 @@ const HOW_IT_WORKS_STEPS = [
 function HomePage() {
   return (
     <div>
-      {/* ---------- Hero section (the big top area) ---------- */}
       <section className="bg-gradient-to-b from-brand-light to-canvas">
         <div className="mx-auto max-w-6xl px-4 py-20 text-center sm:py-28">
           <p className="text-sm font-medium tracking-widest text-brand uppercase">
@@ -61,7 +53,6 @@ function HomePage() {
         </div>
       </section>
 
-      {/* ---------- How it works ---------- */}
       <section className="mx-auto max-w-6xl px-4 py-16">
         <h2 className="text-center font-display text-3xl font-semibold">How it works</h2>
         <div className="mt-10 grid gap-6 sm:grid-cols-3">
@@ -75,7 +66,6 @@ function HomePage() {
           ))}
         </div>
 
-        {/* Honest note required by the project specification */}
         <p className="mx-auto mt-10 max-w-2xl text-center text-xs text-muted">
           Note: the try-on image shows how a garment may <em>look</em>. It does not
           guarantee real-world size or fit.

@@ -1,11 +1,5 @@
 """
-hf_space_helpers.py  —  small helpers shared by the features that use
-free Hugging Face "Spaces" (AI demos):
-
-    - services/model3d_service.py     (image -> 3D model)
-
-Keeping them in their own file keeps model3d_service.py short, and any
-future Hugging Face feature can reuse them.
+Helpers for calling free Hugging Face Spaces (used by model3d_service.py).
 """
 
 import uuid
@@ -15,8 +9,6 @@ from PIL import Image, ImageOps
 
 from config import HF_TOKEN, UPLOADS_DIR
 
-# Big images upload slowly and these AIs work at ~1024 px anyway, so we
-# shrink the longest side to this size first.
 MAX_IMAGE_SIDE_PX = 1024
 
 
@@ -30,11 +22,7 @@ class SpaceError(Exception):
 
 
 def connect_to_space(space_name):
-    """
-    Open a connection to a Hugging Face Space.
-    HF_TOKEN (optional) makes Hugging Face count usage against YOUR free
-    account instead of the small anonymous quota.
-    """
+    """Open a connection to a Hugging Face Space."""
     try:
         return Client(space_name, token=HF_TOKEN or None, verbose=False)
     except Exception as error:
@@ -46,11 +34,7 @@ def connect_to_space(space_name):
 
 
 def prepare_image(image_path):
-    """
-    Make a smaller JPEG copy of the image (faster upload, fewer timeouts).
-    Also applies the phone's rotation info (EXIF), so the image is upright.
-    Returns the path of the copy (in uploads/). The caller must delete it.
-    """
+    """Make a smaller JPEG copy of the image (faster upload, fewer timeouts)."""
     try:
         with Image.open(image_path) as image:
             image = ImageOps.exif_transpose(image)       # fix phone rotation
@@ -75,8 +59,6 @@ def get_friendly_message(error_text):
     """Turn a technical Space error into a sentence a user understands."""
     lowered = error_text.lower()
     if "quota" in lowered:
-        # Keep Hugging Face's own sentence: it says how long to wait,
-        # e.g. "(270s requested vs. 179s left). Try again in 23:42:36."
         hf_sentence = error_text.strip().strip("'\"").split(" Subscribe")[0]
         return (
             "The free AI quota is used up for now. Try again later, or check the "
@@ -86,6 +68,5 @@ def get_friendly_message(error_text):
         return "The free AI service took too long. Please try again."
     if "queue" in lowered or "too many" in lowered:
         return "The free AI service is busy. Please try again in a minute."
-    # Unknown error: add the service's own reason (shortened) to help debugging.
     short_reason = error_text.strip()[:200]
     return f"The free AI service could not finish. Please try again later. (Details: {short_reason})"

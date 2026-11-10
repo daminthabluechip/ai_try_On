@@ -1,16 +1,3 @@
-// =====================================================================
-// TryOnPage.jsx  —  the virtual try-on page (address: "/try-on").
-// =====================================================================
-// The user:
-//   1. uploads a photo           (PhotoUploader)
-//   2. selects a clothing item   (ProductCard grid)
-//   3. clicks "Generate Try-On"  -> createTryOn() in services/api.js
-//   4. sees the generated image  (result section)
-//   5. can reset and try another item
-//
-// If the address is /try-on?product=black-tshirt (coming from the
-// catalog), that product is selected automatically.
-
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
@@ -22,21 +9,15 @@ import ProductCard from '../components/ProductCard.jsx'
 import LoadingSpinner from '../components/LoadingSpinner.jsx'
 import ErrorMessage from '../components/ErrorMessage.jsx'
 
-// The 3D viewer library is big (~1 MB), so we only download it when a 3D
-// model is actually shown ("lazy loading"). The rest of the site stays fast.
 const Model3DViewer = lazy(() => import('../components/Model3DViewer.jsx'))
 
-// Same rules as the backend (backend/config.py). Checking here too gives
-// the user instant feedback without waiting for an upload.
 const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const MAX_PHOTO_SIZE_MB = 10
 
 function TryOnPage() {
-  // Read "?product=..." from the address bar.
   const [searchParams] = useSearchParams()
   const productFromAddress = searchParams.get('product')
 
-  // ---------------- State (data that changes on this page) ----------------
   const [products, setProducts] = useState([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(true)
 
@@ -53,10 +34,8 @@ function TryOnPage() {
   const [isCreating3D, setIsCreating3D] = useState(false)   // true while the 3D AI works
   const [model3DError, setModel3DError] = useState('')
 
-  // A handle to the result section, so we can scroll to it.
   const resultSectionRef = useRef(null)
 
-  // ---------------- Load products once when the page opens ----------------
   useEffect(() => {
     async function loadProducts() {
       try {
@@ -71,10 +50,6 @@ function TryOnPage() {
     loadProducts()
   }, [])
 
-  // ---------------- Free the preview's memory when it changes ----------------
-  // URL.createObjectURL() (used below) reserves browser memory for the
-  // preview. This "cleanup" releases it when the photo changes or the
-  // user leaves the page.
   useEffect(() => {
     return () => {
       if (photoPreviewUrl) {
@@ -83,9 +58,6 @@ function TryOnPage() {
     }
   }, [photoPreviewUrl])
 
-  // ---------------- Event handlers ----------------
-
-  // Called by PhotoUploader when the user picks a file.
   function handlePhotoSelected(file) {
     setErrorMessage('')
 
@@ -100,8 +72,6 @@ function TryOnPage() {
     }
 
     setPhotoFile(file)
-    // Create a temporary local address so the <img> can show the photo
-    // BEFORE it is uploaded anywhere.
     setPhotoPreviewUrl(URL.createObjectURL(file))
     setTryOnResult(null) // a new photo means the old result no longer applies
   }
@@ -112,13 +82,11 @@ function TryOnPage() {
     setErrorMessage('')
   }
 
-  // Called when "Generate Try-On" is clicked: send everything to the backend.
   async function handleGenerate() {
     setErrorMessage('')
     setTryOnResult(null)
     setIsGenerating(true)
 
-    // Scroll down so the user sees the loading spinner.
     resultSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
     try {
@@ -127,17 +95,12 @@ function TryOnPage() {
     } catch (error) {
       setErrorMessage(error.message)
     } finally {
-      // "finally" runs after success OR error: always stop the spinner.
       setIsGenerating(false)
     }
   }
 
-  // Rotate the result image. direction: 90 = right (clockwise), -90 = left.
-  // The rotation is stored INSIDE tryOnResult, so a new result (or Reset)
-  // automatically starts un-rotated again.
   async function handleRotate(direction) {
     const currentRotation = tryOnResult.rotation || 0
-    // "+ 360" and "% 360" keep the value between 0 and 270.
     const newRotation = (currentRotation + direction + 360) % 360
 
     setIsRotating(true)
@@ -146,7 +109,6 @@ function TryOnPage() {
       if (newRotation !== 0) {
         rotatedUrl = await rotateImage(tryOnResult.result_url, newRotation)
       }
-      // Free the memory of the previous rotated copy.
       if (tryOnResult.rotated_url) {
         URL.revokeObjectURL(tryOnResult.rotated_url)
       }
@@ -158,16 +120,12 @@ function TryOnPage() {
     }
   }
 
-  // Turn the try-on result into a rotatable 3D model (takes 1–3 minutes).
   async function handleCreate3DModel() {
     const resultUrl = tryOnResult.result_url
     setModel3DError('')
     setIsCreating3D(true)
     try {
       const model = await create3DModel(tryOnResult.rotated_url || resultUrl)
-      // Save the model address inside tryOnResult — but only if the user
-      // is still looking at the SAME result (they may have clicked Reset
-      // during the long wait).
       setTryOnResult((currentResult) => {
         if (currentResult && currentResult.result_url === resultUrl) {
           return { ...currentResult, model_url: model.model_url }
@@ -181,9 +139,7 @@ function TryOnPage() {
     }
   }
 
-  // Save the generated image (rotated, if the user rotated it).
   async function handleDownload() {
-    // Keep the same file type as the result, e.g. ".png" or ".jpg".
     const resultUrl = tryOnResult.result_url
     const extension = resultUrl.substring(resultUrl.lastIndexOf('.'))
     const fileName = `virtual-tryon-${tryOnResult.product_id}${extension}`
@@ -198,8 +154,6 @@ function TryOnPage() {
     }
   }
 
-  // Keep the photo, but clear the garment and result, so the user can
-  // quickly try a different item on the same photo.
   function handleTryAnotherItem() {
     setSelectedProductId(null)
     setTryOnResult(null)
@@ -207,7 +161,6 @@ function TryOnPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // Start over: clear the photo, selection, result and errors.
   function handleReset() {
     setPhotoFile(null)
     setPhotoPreviewUrl(null)
@@ -217,11 +170,9 @@ function TryOnPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  // ---------------- Values calculated from the state ----------------
   const selectedProduct = products.find((product) => product.id === selectedProductId)
   const canGenerate = photoFile !== null && selectedProduct !== undefined && !isGenerating
 
-  // A short hint telling the user what is still missing.
   let generateHint = 'Ready! Click Generate to see the result.'
   if (!photoFile && !selectedProduct) {
     generateHint = 'Upload a photo and select a garment to continue.'
@@ -231,15 +182,12 @@ function TryOnPage() {
     generateHint = 'Select a garment to continue.'
   }
 
-  // ---------------- What the page shows ----------------
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <h1 className="font-display text-3xl font-semibold sm:text-4xl">Virtual Try-On</h1>
       <p className="mt-2 text-muted">Upload your photo, pick a garment and let the AI do the rest.</p>
 
-      {/* ===== Steps 1 + 2: photo (left) and garments (right) ===== */}
       <div className="mt-8 grid gap-8 lg:grid-cols-3">
-        {/* Step 1 */}
         <section>
           <h2 className="mb-3 font-medium">
             <span className="text-brand">1.</span> Your photo
@@ -251,7 +199,6 @@ function TryOnPage() {
           />
         </section>
 
-        {/* Step 2 */}
         <section className="lg:col-span-2">
           <h2 className="mb-3 font-medium">
             <span className="text-brand">2.</span> Choose a garment
@@ -275,7 +222,6 @@ function TryOnPage() {
         </section>
       </div>
 
-      {/* ===== Step 3: Generate button ===== */}
       <section className="mt-10 flex flex-col items-center gap-3 rounded-2xl border border-stone-200 bg-white p-6 text-center">
         <h2 className="font-medium">
           <span className="text-brand">3.</span> Generate
@@ -301,8 +247,6 @@ function TryOnPage() {
         </div>
       </section>
 
-      {/* ===== Result ===== */}
-      {/* scroll-mt-20 leaves space for the sticky navbar when scrolling here */}
       <section ref={resultSectionRef} className="mt-10 scroll-mt-20">
         <div className="mb-4">
           <ErrorMessage message={errorMessage} onDismiss={() => setErrorMessage('')} />
@@ -318,7 +262,6 @@ function TryOnPage() {
               Your result: {tryOnResult.product_name}
             </h2>
 
-            {/* In mock mode, Genlook returns the photo unchanged (free testing). */}
             {tryOnResult.mock_mode && (
               <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
                 Mock mode is ON: the photo is returned unchanged and no AI credits are used.
@@ -326,7 +269,6 @@ function TryOnPage() {
               </p>
             )}
 
-            {/* Before (the user's photo) vs After (the AI result) */}
             <div className="mt-6">
               <BeforeAfterComparison
                 beforeUrl={photoPreviewUrl}
@@ -334,7 +276,6 @@ function TryOnPage() {
               />
             </div>
 
-            {/* Rotate the result (also changes the downloaded image) */}
             <div className="mt-4 flex justify-center gap-2">
               <button
                 type="button"
@@ -354,7 +295,6 @@ function TryOnPage() {
               </button>
             </div>
 
-            {/* Actions */}
             <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
               <button
                 type="button"
@@ -377,11 +317,9 @@ function TryOnPage() {
               Your result is stored on the server for about 1 hour, then deleted automatically.
             </p>
 
-            {/* ---------- 3D view (beta) ---------- */}
             <div className="mt-8 border-t border-stone-200 pt-6">
               <h3 className="text-center font-display text-xl font-semibold">View in 3D (beta)</h3>
 
-              {/* Not created yet: explain + button */}
               {!tryOnResult.model_url && !isCreating3D && (
                 <div className="mt-3 text-center">
                   <button
@@ -394,17 +332,14 @@ function TryOnPage() {
                 </div>
               )}
 
-              {/* Waiting */}
               {isCreating3D && (
                 <LoadingSpinner message="Building your 3D model... this usually takes 1–3 minutes. Please keep this page open." />
               )}
 
-              {/* Error (shown here, so the try-on result stays visible) */}
               {model3DError && !isCreating3D && (
                 <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-center text-sm text-red-700">{model3DError}</p>
               )}
 
-              {/* Done: the rotatable model + download */}
               {tryOnResult.model_url && (
                 <div className="mt-4">
                   <Suspense fallback={<LoadingSpinner message="Loading the 3D viewer..." />}>

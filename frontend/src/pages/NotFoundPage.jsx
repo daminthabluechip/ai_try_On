@@ -1,7 +1,3 @@
-// =====================================================================
-// NotFoundPage.jsx  —  shown when the address doesn't match any page.
-// =====================================================================
-
 import { Link } from 'react-router-dom'
 
 function NotFoundPage() {

@@ -1,21 +1,6 @@
-// =====================================================================
-// PhotoUploader.jsx  —  lets the user choose their own photo.
-// =====================================================================
-// Shows a big clickable area. After a photo is chosen it shows a preview.
-//
-// Props:
-//   previewUrl   -> address of the preview image (or null if none chosen)
-//   onPhotoSelected(file) -> called with the chosen File object
-//   disabled     -> true while the AI is working (no changes allowed)
-//
-// The photo is NOT uploaded here. It stays in the browser until the user
-// clicks "Generate Try-On" (see TryOnPage.jsx).
-
 import { useRef } from 'react'
 
 function PhotoUploader({ previewUrl, onPhotoSelected, disabled = false }) {
-  // useRef gives us a handle to the hidden <input type="file">,
-  // so our nice-looking button can "click" it.
   const fileInputRef = useRef(null)
 
   function openFilePicker() {
@@ -27,13 +12,11 @@ function PhotoUploader({ previewUrl, onPhotoSelected, disabled = false }) {
     if (chosenFile) {
       onPhotoSelected(chosenFile)
     }
-    // Clear the input so choosing the SAME file again still triggers a change.
     event.target.value = ''
   }
 
   return (
     <div>
-      {/* The real file input is hidden; "accept" filters the file picker. */}
       <input
         ref={fileInputRef}
         type="file"
@@ -64,7 +47,6 @@ function PhotoUploader({ previewUrl, onPhotoSelected, disabled = false }) {
         )}
       </button>
 
-      {/* Image quality guidance, as recommended in the project specification. */}
       {/* TODO: Adjust these tips after testing which photos give the best results. */}
       <ul className="mt-3 space-y-1 text-xs text-muted">
         <li>✓ Stand facing the camera, full upper body visible</li>
